@@ -1,0 +1,40 @@
+name: AppSecAI Triage and Remediation
+
+permissions:
+  contents: read
+  id-token: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  triageAndRemediation:
+    runs-on: ubuntu-latest
+    env:
+      PROCESSING_MODE: group_cc
+      GROUPING_STRATEGY: smart
+      AUTO_CREATE_PRS: "true"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install OpenGrep
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash
+          opengrep --version
+
+      - name: Run OpenGrep
+        run: |
+          set +e
+          opengrep scan --config auto --sarif-output=opengrep-results.sarif .
+          status=$?
+          set -e
+          test -f opengrep-results.sarif
+          exit 0
+
+      - name: AppSecAI
+        uses: AppSecureAI/automation-action@v1
+        with:
+          file: opengrep-results.sarif
